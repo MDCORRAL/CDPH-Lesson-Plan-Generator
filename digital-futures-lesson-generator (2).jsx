@@ -304,14 +304,14 @@ export default function DigitalFuturesApp() {
     }
   };
 
-  var downloadHTML = function() {
+  var downloadWord = function() {
     if (!lesson) return;
     var html = generateHTML(lesson, form, form.topic);
-    var blob = new Blob([html], { type: 'text/html' });
+    var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = lesson.title.replace(/[^a-z0-9]/gi, '_') + '_Lesson_Plan.html';
+    a.download = lesson.title.replace(/[^a-z0-9]/gi, '_') + '_Lesson_Plan.doc';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -320,46 +320,31 @@ export default function DigitalFuturesApp() {
 
   var printLesson = function() {
     if (!lesson) return;
-    
-    // Create a hidden iframe for printing
-    var iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-    
+
     var html = generateHTML(lesson, form, form.topic);
-    var iframeDoc = iframe.contentWindow.document;
-    iframeDoc.open();
-    iframeDoc.write(html);
-    iframeDoc.close();
-    
-    // Wait for content to load, then print
-    iframe.onload = function() {
-      setTimeout(function() {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        
-        // Remove iframe after printing (with delay for print dialog)
-        setTimeout(function() {
-          document.body.removeChild(iframe);
-        }, 1000);
-      }, 100);
+    var printWindow = window.open('', '_blank', 'noopener,noreferrer');
+    if (!printWindow) {
+      setError('Pop-up blocked. Please allow pop-ups to print the lesson plan.');
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    var handlePrint = function() {
+      printWindow.focus();
+      printWindow.print();
     };
-    
-    // Fallback if onload doesn't fire
+
+    printWindow.onload = handlePrint;
+    printWindow.onafterprint = function() {
+      printWindow.close();
+    };
+
     setTimeout(function() {
-      if (document.body.contains(iframe)) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        setTimeout(function() {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-        }, 1000);
+      if (printWindow.document && printWindow.document.readyState === 'complete') {
+        handlePrint();
       }
     }, 500);
   };
@@ -702,10 +687,10 @@ export default function DigitalFuturesApp() {
                 {copied ? <Check className="w-3 h-3" style={{ color: '#10B981' }} /> : <Copy className="w-3 h-3" />}
                 {copied ? 'Copied!' : 'Copy'}
               </button>
-              <button onClick={downloadHTML} 
+              <button onClick={downloadWord} 
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
                 style={{ background: UCLA_COLORS.blue, color: 'white' }}>
-                <Download className="w-3 h-3" /> Download
+                <Download className="w-3 h-3" /> Download Word
               </button>
               <button onClick={printLesson} 
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
